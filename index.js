@@ -89,7 +89,8 @@ function session(options){
     , cookie = options.cookie || {}
     , trustProxy = options.proxy
     , storeReady = true
-    , rollingSessions = options.rolling || false;
+    , rollingSessions = options.rolling || false
+    , saveTimeout = options.timeout || 1000;
   var resaveSession = options.resave;
   var saveUninitializedSession = options.saveUninitialized;
   var secret = options.secret;
@@ -282,13 +283,26 @@ function session(options){
       req.session.touch();
 
       if (shouldSave(req)) {
+        var writeEnded;
         req.session.save(function onsave(err) {
           if (err) {
             defer(next, err);
           }
 
-          writeend();
+          if(!writeEnded) {
+            writeEnded = true;
+            writeend();
+          }
         });
+
+        debug('waiting on save...');
+        setTimeout(function() {
+          if(!writeEnded) {
+            writeEnded = true;
+            console.warn('Saving session timed out');
+            writeend();
+          }
+        }, saveTimeout);
 
         return writetop();
       } else if (storeImplementsTouch && shouldTouch(req)) {
