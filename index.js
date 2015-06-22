@@ -90,7 +90,7 @@ function session(options){
     , trustProxy = options.proxy
     , storeReady = true
     , rollingSessions = options.rolling || false
-    , saveTimeout = options.timeout || 1000;
+    , storeTimeout = options.timeout || 1000;
   var resaveSession = options.resave;
   var saveUninitializedSession = options.saveUninitialized;
   var secret = options.secret;
@@ -302,7 +302,7 @@ function session(options){
             console.warn('Saving session timed out');
             writeend();
           }
-        }, saveTimeout);
+        }, storeTimeout);
 
         return writetop();
       } else if (storeImplementsTouch && shouldTouch(req)) {
@@ -415,6 +415,7 @@ function session(options){
 
     // generate the session object
     debug('fetching %s', req.sessionID);
+    var getEnded;
     store.get(req.sessionID, function(err, sess){
       // error handling
       if (err) {
@@ -444,8 +445,19 @@ function session(options){
         wrapmethods(req.session);
       }
 
-      next();
+      if(!getEnded) {
+        getEnded = true;
+        next();
+      }
     });
+
+    setTimeout(function() {
+      if(!getEnded) {
+        getEnded = true;
+        console.warn('Getting session timed out');
+        next();
+      }
+    }, storeTimeout);
   };
 };
 
